@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Создание плагинов Vue</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #42b983;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #369f6e;
+    }
+    .language-buttons {
+      margin: 15px 0;
+    }
+    .translation-result {
+      padding: 15px;
+      margin: 15px 0;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+    }
+    .error {
+      color: #ff5252;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <h1>Пример работы с плагинами Vue</h1>
+      
+      <h2>Плагин i18n (интернационализация)</h2>
+      
+      <div class="translation-result">
+        <h3>{{ $translate('greetings.hello') }}</h3>
+        <p>{{ $translate('greetings.welcome') }}</p>
+        <p>{{ $translate('missing.key') }}</p>
+      </div>
+      
+      <div class="language-buttons">
+        <button @click="setLanguage('en')">English</button>
+        <button @click="setLanguage('fr')">Français</button>
+        <button @click="setLanguage('ru')">Русский</button>
+        <button @click="setLanguage('es')">Español</button>
+      </div>
+      
+      <h3>Использование inject в компоненте:</h3>
+      <div class="translation-result">
+        <p>Текущий язык: {{ currentLanguage }}</p>
+        <p>Перевод через inject: {{ injectedTranslation }}</p>
+      </div>
+    </div>
+    
+    <div class="container">
+      <h2>Плагин logger (логирование)</h2>
+      <button @click="$log('Тестовое сообщение')">Записать в лог</button>
+      <button @click="testComplexLogging">Записать сложный объект</button>
+      <p>Откройте консоль браузера (F12) чтобы увидеть логи</p>
+    </div>
+    
+    <div class="container">
+      <h2>Пользовательский компонент с плагинами</h2>
+      <greeting-component></greeting-component>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, inject } = Vue;
+    
+    // Плагин i18n
+    const i18nPlugin = {
+      install(app, options) {
+        // Глобальный метод для перевода
+        app.config.globalProperties.$translate = (key) => {
+          return key.split('.').reduce((o, i) => o?.[i], options.translations) ?? '[перевод не найден]';
+        };
+        
+        // Provide для инъекции
+        app.provide('i18n', options);
+        
+        // Метод для изменения языка
+        app.config.globalProperties.setLanguage = function(langCode) {
+          const langData = options.languages[langCode] || {};
+          options.translations = langData;
+          this.$forceUpdate(); // Принудительное обновление
+        };
+      }
+    };
+    
+    // Плагин logger
+    const loggerPlugin = {
+      install(app) {
+        app.config.globalProperties.$log = (msg, level = 'info') => {
+          const timestamp = new Date().toISOString();
+          const logMessage = typeof msg === 'object' 
+            ? JSON.stringify(msg, null, 2) 
+            : msg;
+          
+          console.log(`[${timestamp}] [${level.toUpperCase()}]: ${logMessage}`);
+        };
+      }
+    };
+    
+    // Пользовательский компонент
+    const GreetingComponent = {
+      template: `
+        <div class="translation-result">
+          <h3>Компонент говорит: {{ greeting }}</h3>
+          <button @click="logGreeting">Записать приветствие в лог</button>
+        </div>
+      `,
+      setup() {
+        const i18n = inject('i18n');
+        const greeting = Vue.ref(i18n.translations.greetings?.hello || 'Привет');
+        
+        const logGreeting = () => {
+          // Используем глобальный метод $log из плагина
+          Vue.getCurrentInstance().appContext.config.globalProperties.$log(
+            `Приветствие: ${greeting.value}`
+          );
+        };
+        
+        return { greeting, logGreeting };
+      }
+    };
+    
+    // Инициализация приложения
+    const app = createApp({
+      setup() {
+        const i18n = inject('i18n');
+        const currentLanguage = Vue.ref('ru');
+        const injectedTranslation = Vue.ref(i18n.translations.greetings?.hello || '');
+        
+        const setLanguage = (langCode) => {
+          currentLanguage.value = langCode;
+          Vue.getCurrentInstance().appContext.config.globalProperties.setLanguage(langCode);
+          injectedTranslation.value = i18n.translations.greetings?.hello || '';
+        };
+        
+        const testComplexLogging = () => {
+          const complexObject = {
+            date: new Date(),
+            message: 'Тестовый объект',
+            data: [1, 2, 3]
+          };
+          Vue.getCurrentInstance().appContext.config.globalProperties.$log(complexObject);
+        };
+        
+        return { 
+          currentLanguage, 
+          injectedTranslation,
+          setLanguage,
+          testComplexLogging
+        };
+      }
+    });
+    
+    // Регистрация компонента
+    app.component('greeting-component', GreetingComponent);
+    
+    // Использование плагинов
+    app.use(i18nPlugin, {
+      translations: {
+        greetings: {
+          hello: 'Привет',
+          welcome: 'Добро пожаловать'
+        }
+      },
+      languages: {
+        en: {
+          greetings: {
+            hello: 'Hello',
+            welcome: 'Welcome'
+          }
+        },
+        fr: {
+          greetings: {
+            hello: 'Bonjour',
+            welcome: 'Bienvenue'
+          }
+        },
+        ru: {
+          greetings: {
+            hello: 'Привет',
+            welcome: 'Добро пожаловать'
+          }
+        },
+        es: {
+          greetings: {
+            hello: 'Hola',
+            welcome: 'Bienvenido'
+          }
+        }
+      }
+    });
+    
+    app.use(loggerPlugin);
+    app.mount('#app');
+  </script>
+</body>
+</html>
