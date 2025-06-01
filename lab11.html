@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Менеджер задач на Vue.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .task-form {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+    }
+    .task-form input {
+      padding: 8px;
+      margin-right: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .task-form button {
+      background-color: #42b983;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .task-form button:hover {
+      background-color: #369f6e;
+    }
+    .task-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .task-list li {
+      padding: 10px;
+      margin: 5px 0;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+    }
+    .task-list li input[type="checkbox"] {
+      margin-right: 10px;
+    }
+    .task-list li button {
+      margin-left: auto;
+      background-color: #ff5252;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .task-list li button:hover {
+      background-color: #ff0000;
+    }
+    .done {
+      text-decoration: line-through;
+      color: #888;
+    }
+    .overdue {
+      color: #ff0000;
+      font-weight: bold;
+    }
+    .filters {
+      margin-bottom: 20px;
+    }
+    .filters button {
+      margin-right: 10px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .filters button.active {
+      background-color: #0d8aee;
+    }
+    .import-export {
+      margin-top: 20px;
+    }
+    .import-export button {
+      margin-right: 10px;
+      background-color: #607d8b;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Менеджер задач</h1>
+    
+    <!-- Форма добавления задачи -->
+    <div class="task-form">
+      <form @submit.prevent="addTask">
+        <input 
+          v-model="newTask.text" 
+          placeholder="Введите задачу" 
+          required
+        >
+        <input 
+          type="date" 
+          v-model="newTask.deadline" 
+          required
+        >
+        <button type="submit">Добавить</button>
+      </form>
+    </div>
+    
+    <!-- Фильтры -->
+    <div class="filters">
+      <button 
+        @click="filter = 'all'" 
+        :class="{ active: filter === 'all' }"
+      >
+        Все задачи
+      </button>
+      <button 
+        @click="filter = 'active'" 
+        :class="{ active: filter === 'active' }"
+      >
+        Активные
+      </button>
+      <button 
+        @click="filter = 'completed'" 
+        :class="{ active: filter === 'completed' }"
+      >
+        Выполненные
+      </button>
+    </div>
+    
+    <!-- Список задач -->
+    <ul class="task-list">
+      <li 
+        v-for="(task, index) in filteredTasks" 
+        :key="index"
+        :class="{ done: task.done, overdue: isOverdue(task) && !task.done }"
+      >
+        <input 
+          type="checkbox" 
+          v-model="task.done"
+          @change="saveTasks"
+        >
+        <span>
+          {{ task.text }} — до {{ formatDate(task.deadline) }}
+          <span v-if="isOverdue(task) && !task.done"> (Просрочено)</span>
+        </span>
+        <button @click="deleteTask(index)">Удалить</button>
+      </li>
+      <li v-if="filteredTasks.length === 0">
+        Нет задач для отображения
+      </li>
+    </ul>
+    
+    <!-- Импорт/Экспорт -->
+    <div class="import-export">
+      <button @click="exportTasks">Экспорт задач (JSON)</button>
+      <button @click="importTasks">Импорт задач</button>
+      <input 
+        type="file" 
+        ref="fileInput" 
+        @change="handleFileImport" 
+        style="display: none"
+        accept=".json"
+      >
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const { createApp } = Vue;
+    
+    createApp({
+      data() {
+        return {
+          newTask: {
+            text: '',
+            deadline: ''
+          },
+          tasks: [],
+          filter: 'all'
+        };
+      },
+      computed: {
+        filteredTasks() {
+          switch (this.filter) {
+            case 'active':
+              return this.tasks.filter(task => !task.done);
+            case 'completed':
+              return this.tasks.filter(task => task.done);
+            default:
+              return this.tasks;
+          }
+        }
+      },
+      methods: {
+        addTask() {
+          this.tasks.push({ 
+            ...this.newTask, 
+            done: false 
+          });
+          this.newTask.text = '';
+          this.newTask.deadline = '';
+          this.saveTasks();
+        },
+        deleteTask(index) {
+          this.tasks.splice(index, 1);
+          this.saveTasks();
+        },
+        isOverdue(task) {
+          if (!task.deadline) return false;
+          const today = new Date().toISOString().split('T')[0];
+          return task.deadline < today;
+        },
+        formatDate(dateString) {
+          if (!dateString) return '';
+          const options = { year: 'numeric', month: 'long', day: 'numeric' };
+          return new Date(dateString).toLocaleDateString('ru-RU', options);
+        },
+        saveTasks() {
+          localStorage.setItem('tasks', JSON.stringify(this.tasks));
+        },
+        loadTasks() {
+          const saved = localStorage.getItem('tasks');
+          if (saved) {
+            try {
+              this.tasks = JSON.parse(saved);
+            } catch (e) {
+              console.error('Ошибка загрузки задач:', e);
+            }
+          }
+        },
+        exportTasks() {
+          const dataStr = JSON.stringify(this.tasks, null, 2);
+          const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+          
+          const exportFileDefaultName = 'tasks.json';
+          
+          const linkElement = document.createElement('a');
+          linkElement.setAttribute('href', dataUri);
+          linkElement.setAttribute('download', exportFileDefaultName);
+          linkElement.click();
+        },
+        importTasks() {
+          this.$refs.fileInput.click();
+        },
+        handleFileImport(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const importedTasks = JSON.parse(e.target.result);
+              if (Array.isArray(importedTasks)) {
+                this.tasks = importedTasks;
+                this.saveTasks();
+                alert(`Успешно импортировано ${importedTasks.length} задач`);
+              } else {
+                alert('Файл должен содержать массив задач');
+              }
+            } catch (error) {
+              alert('Ошибка при чтении файла: ' + error.message);
+            }
+          };
+          reader.readAsText(file);
+          event.target.value = ''; // Сброс значения для возможности повторного выбора того же файла
+        }
+      },
+      mounted() {
+        this.loadTasks();
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
