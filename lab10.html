@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue.js Практика</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    button {
+      background-color: #42b983;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px 0;
+    }
+    button:hover {
+      background-color: #369f6e;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .task-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .task-list li {
+      padding: 8px;
+      margin: 5px 0;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+    .active-link {
+      font-weight: bold;
+      color: #42b983;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Шаг 1: Простое подключение Vue -->
+    <div class="container">
+      <h1>Шаг 1: Подключение Vue.js</h1>
+      <p>Приложение подключено и готово к работе</p>
+    </div>
+
+    <!-- Шаг 2: Вывод данных -->
+    <div class="container">
+      <h1>Шаг 2: Вывод данных</h1>
+      <h2>{{ message }}</h2>
+    </div>
+
+    <!-- Шаг 3: Обработка событий -->
+    <div class="container">
+      <h1>Шаг 3: Обработка событий</h1>
+      <h2>{{ message }}</h2>
+      <button @click="message = 'Сообщение изменено!'">Изменить текст</button>
+      <button @click="reverseMessage">Перевернуть текст</button>
+    </div>
+
+    <!-- Шаг 4: Двусторонняя привязка -->
+    <div class="container">
+      <h1>Шаг 4: Двусторонняя привязка</h1>
+      <input v-model="message" placeholder="Введите текст">
+      <p>Вы ввели: {{ message }}</p>
+    </div>
+
+    <!-- Шаг 5: Работа с условиями и циклами -->
+    <div class="container">
+      <h1>Шаг 5: Список задач</h1>
+      <ul class="task-list">
+        <li v-for="(task, index) in tasks" :key="index">
+          {{ index + 1 }}. {{ task }}
+        </li>
+      </ul>
+      
+      <div class="form-group">
+        <input v-model="newTask" @keyup.enter="addTask" placeholder="Добавить новую задачу">
+        <button @click="addTask">Добавить</button>
+      </div>
+    </div>
+
+    <!-- Шаг 6: Условный рендеринг -->
+    <div class="container">
+      <h1>Шаг 6: Условный рендеринг</h1>
+      <button @click="visible = !visible">
+        {{ visible ? 'Скрыть текст' : 'Показать текст' }}
+      </button>
+      <p v-if="visible">Этот текст можно скрыть или показать</p>
+      <p v-else>Текст сейчас скрыт</p>
+    </div>
+
+    <!-- Дополнительное задание: Форма -->
+    <div class="container">
+      <h1>Дополнительное задание: Форма</h1>
+      <div class="form-group">
+        <label>Имя:</label>
+        <input v-model="form.name" placeholder="Ваше имя">
+      </div>
+      <div class="form-group">
+        <label>Email:</label>
+        <input v-model="form.email" type="email" placeholder="Ваш email">
+      </div>
+      <div class="form-group">
+        <label>Сообщение:</label>
+        <textarea v-model="form.message" placeholder="Ваше сообщение"></textarea>
+      </div>
+      <button @click="submitForm">Отправить</button>
+      
+      <div v-if="submitted" class="form-result">
+        <h3>Результат:</h3>
+        <p><strong>Имя:</strong> {{ form.name }}</p>
+        <p><strong>Email:</strong> {{ form.email }}</p>
+        <p><strong>Сообщение:</strong> {{ form.message }}</p>
+      </div>
+    </div>
+
+    <!-- Дополнительное задание: Директива v-bind -->
+    <div class="container">
+      <h1>Дополнительное задание: v-bind</h1>
+      <a :href="link.url" :class="{ 'active-link': link.isActive }">
+        {{ link.text }}
+      </a>
+      <br>
+      <button @click="toggleLink">Переключить активную ссылку</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          // Шаг 2, 3, 4
+          message: 'Привет, Vue!',
+          
+          // Шаг 5
+          tasks: ['Выучить Vue', 'Сделать проект', 'Сдать практику'],
+          newTask: '',
+          
+          // Шаг 6
+          visible: true,
+          
+          // Доп. задание: Форма
+          form: {
+            name: '',
+            email: '',
+            message: ''
+          },
+          submitted: false,
+          
+          // Доп. задание: v-bind
+          link: {
+            url: 'https://vuejs.org',
+            text: 'Официальная документация Vue.js',
+            isActive: true
+          }
+        }
+      },
+      methods: {
+        // Шаг 3
+        reverseMessage() {
+          this.message = this.message.split('').reverse().join('');
+        },
+        
+        // Шаг 5
+        addTask() {
+          if (this.newTask.trim()) {
+            this.tasks.push(this.newTask.trim());
+            this.newTask = '';
+          }
+        },
+        
+        // Доп. задание: Форма
+        submitForm() {
+          this.submitted = true;
+          // Здесь можно добавить отправку данных на сервер
+        },
+        
+        // Доп. задание: v-bind
+        toggleLink() {
+          this.link.isActive = !this.link.isActive;
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
